@@ -1,6 +1,6 @@
 # Tesseract.js && Vue && TypeScript
 
-该项目是一个视屏识别的dem，主要技术栈为 Tesseract.js TypeScript 和 Vue3 框架。
+该项目是一个视屏识别的demo，主要技术栈为 Tesseract.js TypeScript 和 Vue3 框架。
 
 ## 启动项目
 

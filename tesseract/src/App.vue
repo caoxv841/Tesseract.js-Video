@@ -13,7 +13,7 @@
     <button @click="tesser(0)">识别图片</button>
     <img ref="imageElement" alt="Vue logo" :src="images" />
     <video ref="videoElement" :src="videos" controls @play="tesser(1)" @ended="tesser(2)" @pause="tesser(2)"></video>
-    <canvas ref="vc"  style="display: none;"></canvas>
+    <canvas ref="vc" style="display: none;"></canvas>
   </div>
 </template>
 
@@ -88,7 +88,10 @@ sps.lang = "CN-US" //汉语
 sps.rate = 1  //语速
 
 // 选择值开启或关闭视屏识别
-let sL:boolean = false
+let sL: boolean = false
+
+// 选择用于判断视屏两次识别的结果是否相同
+let btext: boolean = false
 
 //识别
 async function ded(ifNumber: number) {
@@ -101,9 +104,8 @@ async function ded(ifNumber: number) {
     workerPath: "/tesseract/tesseract.js/dist/worker.min.js",
     corePath: "/tesseract/tesseract.js-core/tesseract-core.wasm.js",
     langPath: "/tesseract/tesseract-lang",  // TODO：prd环境下会报错
-    logger: e => console.log(e)
   });
-  
+
   await worker.loadLanguage("chi_sim");
   await worker.initialize("chi_sim", OEM.LSTM_ONLY);
   await worker.setParameters({
@@ -114,14 +116,14 @@ async function ded(ifNumber: number) {
     // 若传入值为0则表示当前调用为图片文字识别
     try {
       // 捕获错误
-      var {data} = await worker.recognize(imageElement.value)
+      var { data } = await worker.recognize(imageElement.value)
 
     } catch {
       // 识别失败报错
       sps.text = "识别失败，请检查文件是否包含文字或检查你的网络"
       window.speechSynthesis.speak(sps)
       // 发现错误停止函数
-      return   
+      return
     }
 
     // 将识别结果加入播放队列
@@ -133,7 +135,7 @@ async function ded(ifNumber: number) {
   } else if (ifNumber == 1) {
     sL = true
     // 若传入值为1则表示视屏开始播放，开始识别字幕
-   for(let a = true;a;a=sL) {
+    while (sL) {
       //判断是否识别失败
       try {
         //画布获取视屏的宽高
@@ -142,28 +144,37 @@ async function ded(ifNumber: number) {
         const ctx = vc.value.getContext("2d")
         ctx.drawImage(videoElement.value, 0, 0, vc.value.width, vc.value.height)
 
-          //识别
-        var  {data}  = await worker.recognize(vc.value)
-
-
-        // 如果这次的值与上次相同，停止函数的执行
-        if (data.text == texts) continue
-      } catch(e) {
+        //识别,且只识别屏幕下半部分
+        var { data } = await worker.recognize(vc.value, {
+          rectangle: {
+            top: vc.value.height / 2,
+            left: vc.value.width / 2,
+            width: vc.value.width / 2,
+            height: vc.value.height / 2
+          }
+        })
+        // 如果这次的值与上次相同，不再执行加入播放队列任务
+        data.text == texts? btext = true: btext = false
+      } catch (e) {
         continue
       }
 
-      // 将识别结果加入播放队列
-      sps.text = data.text
-      // 两次识别的结果不同，将此次识别的结果覆盖上次的结果
-      texts = data.text
-      // 语音播放
-      window.speechSynthesis.speak(sps)
-      
+      if (!btext) {
+        // 将识别结果加入播放队列
+        sps.text = data.text
+        // 两次识别的结果不同，将此次识别的结果覆盖上次的结果
+        texts = data.text
+        // 语音播放
+        window.speechSynthesis.speak(sps)
+      }
+
     }
 
   } else if (ifNumber == 2) {
     //若传入值为2则表示视屏停止播放
     sL = false
+    // 关闭播放队列
+    window.speechSynthesis.cancel()
   }
 }
 
