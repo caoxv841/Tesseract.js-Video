@@ -97,7 +97,7 @@ let btext: boolean = false
 async function ded(ifNumber: number) {
 
   //设置值用于视屏识别判断值是否重复
-  let texts = ""
+  let texts: string = ""
 
   // 初始化
   var worker = await createWorker({
@@ -136,28 +136,23 @@ async function ded(ifNumber: number) {
     sL = true
     // 若传入值为1则表示视屏开始播放，开始识别字幕
     while (sL) {
-      //判断是否识别失败
-      try {
-        //画布获取视屏的宽高
-        vc.value.height = videoElement.value.videoHeight
-        vc.value.width = videoElement.value.videoWidth
-        const ctx = vc.value.getContext("2d")
-        ctx.drawImage(videoElement.value, 0, 0, vc.value.width, vc.value.height)
+      //画布获取视屏的宽高
+      vc.value.height = videoElement.value.videoHeight
+      vc.value.width = videoElement.value.videoWidth
+      const ctx = vc.value.getContext("2d")
+      ctx.drawImage(videoElement.value, 0, 0, vc.value.width, vc.value.height)
 
-        //识别,且只识别屏幕下半部分
-        var { data } = await worker.recognize(vc.value, {
-          rectangle: {
-            top: vc.value.height / 2,
-            left: vc.value.width / 2,
-            width: vc.value.width / 2,
-            height: vc.value.height / 2
-          }
-        })
-        // 如果这次的值与上次相同，不再执行加入播放队列任务
-        data.text == texts? btext = true: btext = false
-      } catch (e) {
-        continue
-      }
+      //识别,且只识别屏幕下半部分
+      var { data } = await worker.recognize(vc.value, {
+        rectangle: {
+          top: vc.value.height / 2,
+          left: vc.value.width / 2,
+          width: vc.value.width / 2,
+          height: vc.value.height / 2
+        }
+      })
+      // 如果这次的值与上次相同，不再执行加入播放队列任务
+      data.text == texts ? btext = true : btext = false
 
       if (!btext) {
         // 将识别结果加入播放队列
@@ -166,8 +161,16 @@ async function ded(ifNumber: number) {
         texts = data.text
         // 语音播放
         window.speechSynthesis.speak(sps)
+        // 等待语音播放队列播放完毕再进行判断
+        await new Promise((re,en) => {
+          let a = setInterval(() => {
+            if(!window.speechSynthesis.pending){
+              // 直到播放队列播放完毕才停止函数
+              clearInterval(a)
+            }
+          },500)
+        })
       }
-
     }
 
   } else if (ifNumber == 2) {
