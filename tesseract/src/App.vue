@@ -106,8 +106,8 @@ async function ded(ifNumber: number) {
     langPath: "/tesseract/tesseract-lang",  // TODO：prd环境下会报错
   });
 
-  await worker.loadLanguage("chi_sim");
-  await worker.initialize("chi_sim", OEM.LSTM_ONLY);
+  await worker.loadLanguage("chi_sim+chi_tra");
+  await worker.initialize("chi_sim+chi_tra", OEM.LSTM_ONLY);
   await worker.setParameters({
     tessedit_pageseg_mode: PSM.SINGLE_BLOCK
   })
@@ -151,18 +151,23 @@ async function ded(ifNumber: number) {
           height: vc.value.height / 2
         }
       })
+
       // 如果这次的值与上次相同，不再执行加入播放队列任务
       data.text == texts ? btext = true : btext = false
 
       if (!btext) {
+
         // 将识别结果加入播放队列
         sps.text = data.text
+
         // 两次识别的结果不同，将此次识别的结果覆盖上次的结果
         texts = data.text
+
         // 语音播放
         window.speechSynthesis.speak(sps)
+
         // 等待语音播放队列播放完毕再进行判断
-        await new Promise((re,en) => {
+        await new Promise(() => {
           let a = setInterval(() => {
             if(!window.speechSynthesis.pending){
               // 直到播放队列播放完毕才停止函数
@@ -170,6 +175,7 @@ async function ded(ifNumber: number) {
             }
           },500)
         })
+
       }
     }
 
